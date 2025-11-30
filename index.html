@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script type="module" src="index.tsx"></script>
+  <style>
+    :root {
+      --background-color: #0d1117;
+      --surface-color: #161b22;
+      --primary-color: #58a6ff;
+      --primary-variant-color: #1f6feb;
+      --secondary-color: #238636;
+      --text-primary-color: #c9d1d9;
+      --text-secondary-color: #8b949e;
+      --error-color: #f85149;
+      --border-color: #30363d;
+      --code-bg: #161b22;
+      --hint-bg: #1f2937;
+      --answer-bg: #163c22;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body, #root {
+      height: 100%;
+      width: 100%;
+      background-color: var(--background-color);
+      color: var(--text-primary-color);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      overflow: hidden;
+    }
+    
+    .app-shell {
+      display: flex;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 300px;
+      height: 100%;
+      background-color: var(--surface-color);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 1000;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .sidebar-header h2 {
+      font-size: 1.25rem;
+      color: var(--text-primary-color);
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary-color);
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+    
+    .close-btn:hover {
+      color: var(--text-primary-color);
+    }
+    
+    .sidebar-nav {
+      display: flex;
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-nav-button {
+      flex: 1;
+      padding: 0.75rem;
+      background: none;
+      border: none;
+      color: var(--text-secondary-color);
+      font-size: 1rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .sidebar-nav-button.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    .chapter-list, .history-list {
+      list-style: none;
+    }
+
+    .chapter-item, .history-item {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-primary-color);
+      margin-bottom: 4px;
+    }
+    
+    .lang-icon {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
+
+    .chapter-item:hover, .history-item:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .history-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+    
+    .history-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        color: var(--text-secondary-color);
+        font-size: 0.9rem;
+    }
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100%;
+        background-color: var(--background-color);
+    }
+    .header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--surface-color);
+        text-align: center;
+        display: flex;
+        align-items: center;
+    }
+    
+    .menu-button {
+      background: none;
+      border: none;
+      color: var(--text-primary-color);
+      cursor: pointer;
+      padding: 0.5rem;
+      margin-right: 1rem;
+    }
+
+    .header-title-group {
+        flex-grow: 1;
+        text-align: center;
+        transform: translateX(-24px);
+    }
+
+    .title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary-color);
+        margin: 0;
+        letter-spacing: -0.5px;
+    }
+    .subtitle {
+        font-size: 0.875rem;
+        color: var(--text-secondary-color);
+        margin: 0.25rem 0 0 0;
+    }
+    .chat-window {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .message {
+        display: flex;
+        gap: 1rem;
+        max-width: 85%;
+        align-items: flex-start;
+    }
+    .user-message {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
+    .model-message {
+        align-self: flex-start;
+    }
+    .avatar {
+        font-size: 1.5rem;
+        padding-top: 0.2rem;
+        user-select: none;
+    }
+    .message-content {
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        line-height: 1.6;
+        font-size: 15px;
+        position: relative;
+    }
+    .user-message-content {
+        background-color: var(--primary-variant-color);
+        color: #fff;
+        border-top-right-radius: 2px;
+    }
+    .model-message-content {
+        background-color: var(--surface-color);
+        color: var(--text-primary-color);
+        border: 1px solid var(--border-color);
+        border-top-left-radius: 2px;
+    }
+    .footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        background-color: var(--surface-color);
+    }
+    .input-form {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+    .input {
+        flex: 1;
+        padding: 0.875rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background-color: var(--background-color);
+        color: var(--text-primary-color);
+        font-size: 1rem;
+        font-family: 'Inter', sans-serif;
+    }
+    .send-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        border: none;
+        background-color: var(--secondary-color);
+        color: white;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.1s;
+    }
+    .send-button:active {
+        transform: scale(0.95);
+    }
+    .error-text {
+      color: var(--error-color);
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background-color: var(--surface-color);
+        border-radius: 12px;
+        border-top-left-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+    .input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+    .send-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    @keyframes blink {
+        50% { opacity: 0.5; }
+    }
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--text-secondary-color);
+        margin: 0 2px;
+        animation: blink 1.4s infinite both;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Styles for rendered markdown */
+    .message-content pre {
+      background-color: #0d1117;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+      border: 1px solid var(--border-color);
+    }
+    .message-content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+    }
+    .message-content pre code {
+      background-color: transparent;
+      padding: 0;
+      border-radius: 0;
+      color: var(--text-primary-color);
+    }
+    .message-content code:not(pre > code) {
+      background-color: rgba(110, 118, 129, 0.4);
+      padding: 0.2em 0.4em;
+      border-radius: 6px;
+    }
+    .message-content p {
+      margin-bottom: 0.75rem;
+    }
+    .message-content p:last-child {
+      margin-bottom: 0;
+    }
+    .message-content ul, .message-content ol {
+      padding-left: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .message-content li {
+      margin-bottom: 0.25rem;
+    }
+    .message-content strong {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    /* Interactive Quiz Elements (Details/Summary) */
+    details {
+        margin: 0.75rem 0;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    summary {
+        cursor: pointer;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        color: var(--text-primary-color);
+        display: flex;
+        align-items: center;
+        list-style: none;
+        transition: background-color 0.2s;
+        user-select: none;
+    }
+    
+    summary:hover {
+        opacity: 0.9;
+    }
+
+    summary::-webkit-details-marker {
+        display: none;
+    }
+    
+    /* Subtle Hint Style */
+    details:not([open]) summary {
+         background-color: var(--surface-color);
+    }
+
+    /* Answer specific styling override in JS/Markdown logic or via attribute if possible. 
+       We will use general styling for now. */
+    
+    details > div, details > p, details > pre, details > ul, details > ol {
+        padding: 1rem;
+        margin: 0 !important;
+        border-top: 1px solid var(--border-color);
+        background-color: rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.2s ease-out;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "marked": "https://aistudiocdn.com/marked@^16.4.1"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
